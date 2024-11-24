@@ -1,0 +1,67 @@
+# .gitignore
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build files
+dist/
+build/
+*.cell
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Log files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Contract builds
+contracts/build/
+artifacts/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Database
+*.sqlite
+*.sqlite3
+
+# Local development
+.local/
+docker-compose.override.yml
+
+# Private keys and mnemonics
+*.pem
+*.key
+mnemonic.txt

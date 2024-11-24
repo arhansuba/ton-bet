@@ -1,0 +1,106 @@
+/* styles.module.css */
+.formCard {
+    @apply max-w-md mx-auto bg-white dark:bg-gray-800;
+    @apply border border-gray-200 dark:border-gray-700;
+    @apply rounded-lg shadow-sm;
+  }
+  
+  .inputGroup {
+    @apply relative flex items-center;
+  }
+  
+  .iconWrapper {
+    @apply absolute left-3 top-1/2 -translate-y-1/2;
+    @apply text-gray-500 dark:text-gray-400;
+    @apply pointer-events-none;
+  }
+  
+  .input {
+    @apply pl-10 w-full;
+    @apply bg-white dark:bg-gray-900;
+    @apply border border-gray-200 dark:border-gray-700;
+    @apply rounded-md shadow-sm;
+    @apply focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400;
+    @apply focus:border-transparent;
+    @apply placeholder-gray-400 dark:placeholder-gray-500;
+  }
+  
+  .textArea {
+    @apply w-full min-h-[100px];
+    @apply bg-white dark:bg-gray-900;
+    @apply border border-gray-200 dark:border-gray-700;
+    @apply rounded-md shadow-sm;
+    @apply focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400;
+    @apply focus:border-transparent;
+    @apply placeholder-gray-400 dark:placeholder-gray-500;
+    @apply resize-none;
+  }
+  
+  .label {
+    @apply block text-sm font-medium;
+    @apply text-gray-700 dark:text-gray-300;
+    @apply mb-1;
+  }
+  
+  .error {
+    @apply text-sm text-red-500 dark:text-red-400;
+    @apply mt-1;
+  }
+  
+  .submitButton {
+    @apply relative;
+  }
+  
+  .submitButton[disabled] {
+    @apply opacity-50 cursor-not-allowed;
+  }
+  
+  .loadingSpinner {
+    @apply absolute right-4 top-1/2 -translate-y-1/2;
+    @apply animate-spin;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .errorAlert {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @media (max-width: 640px) {
+    .formCard {
+      @apply mx-4 mb-4;
+    }
+  }
+  
+  /* Dark mode enhancement */
+  :global(.dark) .formCard {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
+  /* Focus styles for better accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+  }
+  
+  /* Custom scrollbar */
+  .textArea::-webkit-scrollbar {
+    @apply w-2;
+  }
+  
+  .textArea::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-700 rounded-md;
+  }
+  
+  .textArea::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-md;
+    @apply hover:bg-gray-400 dark:hover:bg-gray-500;
+  }

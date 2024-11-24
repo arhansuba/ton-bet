@@ -1,0 +1,108 @@
+#pragma version =0.4.0;
+
+;; =============== Storage TL-B ===============
+{-
+storage#_ owner_address:MsgAddress
+         total_bets:uint32
+         total_volume:Coins
+         min_bet:Coins
+         platform_fee:uint8
+         bets:(HashmapE 32 Bet) = Storage;
+
+bet#_ id:uint32
+      creator:MsgAddress
+      amount:Coins
+      description:^Cell
+      participants:(HashmapE 8 MsgAddress)
+      status:uint8
+      winner:MsgAddress
+      created_at:uint64 = Bet;
+
+message$_ {X:Type} bounce:bool src:MsgAddress body:X = Message X;
+-}
+
+;; =============== Message Ops ===============
+;; Internal message operations for betting contract
+{-
+create_bet#947c403e query_id:uint64 description:^Cell = InternalMsgBody;
+join_bet#1d8129e2 query_id:uint64 bet_id:uint32 = InternalMsgBody;
+resolve_bet#b4028984 query_id:uint64 bet_id:uint32 winner:MsgAddress = InternalMsgBody;
+update_fee#6f47d15c query_id:uint64 new_fee:uint8 = InternalMsgBody;
+update_min_bet#4e93d612 query_id:uint64 new_min_bet:Coins = InternalMsgBody;
+-}
+
+;; =============== Required Methods ===============
+{-
+  Required methods to implement:
+  
+  () recv_internal(int msg_value, cell in_msg_full, slice in_msg_body)
+  Handle incoming internal messages
+
+  (int, int, int, int) get_contract_data()
+  Returns (total_bets, total_volume, min_bet, platform_fee)
+
+  (slice, int, slice) get_bet_info(int bet_id)
+  Returns (creator, amount, description)
+
+  cell get_participants(int bet_id)
+  Returns participants dictionary
+-}
+
+;; =============== Interface Constants ===============
+const int DECIMAL_PLACES = 9;            ;; TON precision
+const int MAX_PARTICIPANTS = 255;        ;; Maximum participants per bet
+const int MIN_DESCRIPTION_LENGTH = 10;   ;; Minimum description length
+const int MAX_DESCRIPTION_LENGTH = 200;  ;; Maximum description length
+
+;; =============== Events ===============
+{-
+bet_created#1 bet_id:uint32 creator:MsgAddress amount:Coins = BetCreated;
+bet_joined#2 bet_id:uint32 participant:MsgAddress = BetJoined;
+bet_resolved#3 bet_id:uint32 winner:MsgAddress amount:Coins = BetResolved;
+fee_updated#4 new_fee:uint8 = FeeUpdated;
+min_bet_updated#5 new_min_bet:Coins = MinBetUpdated;
+-}
+
+;; =============== Error Codes ===============
+{-
+error::unauthorized#64         = Error;  ;; 100
+error::insufficient_amount#65  = Error;  ;; 101
+error::bet_not_found#66       = Error;  ;; 102
+error::bet_closed#67          = Error;  ;; 103
+error::amount_mismatch#68     = Error;  ;; 104
+error::invalid_winner#69      = Error;  ;; 105
+error::invalid_fee#6a         = Error;  ;; 106
+error::invalid_op#6b          = Error;  ;; 107
+error::platform_busy#6c       = Error;  ;; 108
+-}
+
+;; =============== Interface Functions ===============
+{-
+  Functions to be implemented by contract:
+
+  create_bet:
+  - Requires value >= min_bet
+  - Creates new bet with creator as first participant
+  - Emits bet_created event
+
+  join_bet:
+  - Requires value >= bet amount
+  - Adds participant to bet
+  - Emits bet_joined event
+
+  resolve_bet:
+  - Requires sender to be creator
+  - Requires bet to be active
+  - Distributes winnings
+  - Emits bet_resolved event
+
+  update_platform_fee:
+  - Requires sender to be owner
+  - Updates platform fee
+  - Emits fee_updated event
+
+  update_min_bet:
+  - Requires sender to be owner
+  - Updates minimum bet amount
+  - Emits min_bet_updated event
+-}

@@ -1,0 +1,130 @@
+/* styles.module.css */
+.walletCard {
+    @apply w-full max-w-sm mx-auto;
+    @apply bg-white dark:bg-gray-800;
+    @apply shadow-sm transition-all duration-200;
+  }
+  
+  .connectButton {
+    @apply w-full max-w-sm mx-auto flex items-center justify-center;
+    @apply bg-gradient-to-r from-blue-500 to-blue-600;
+    @apply hover:from-blue-600 hover:to-blue-700;
+    @apply text-white font-medium;
+    @apply transition-all duration-200;
+  }
+  
+  .connectButton[disabled] {
+    @apply opacity-50 cursor-not-allowed;
+  }
+  
+  .dialogContent {
+    @apply max-w-md mx-auto p-6;
+    @apply bg-white dark:bg-gray-800;
+    @apply rounded-lg shadow-xl;
+  }
+  
+  .connectOptions {
+    @apply grid gap-4 mt-6;
+  }
+  
+  .optionButton {
+    @apply w-full flex items-center justify-center;
+    @apply border border-gray-200 dark:border-gray-700;
+    @apply bg-white dark:bg-gray-800;
+    @apply hover:bg-gray-50 dark:hover:bg-gray-700;
+    @apply transition-colors duration-200;
+  }
+  
+  .qrContainer {
+    @apply mt-6 flex flex-col items-center;
+    @apply p-4 bg-white dark:bg-gray-900;
+    @apply rounded-lg border border-gray-200 dark:border-gray-700;
+  }
+  
+  .qrInstructions {
+    @apply mt-4 text-sm text-gray-500 dark:text-gray-400;
+    @apply text-center;
+  }
+  
+  .network {
+    @apply inline-flex items-center;
+    @apply px-2 py-1 rounded-full;
+    @apply text-xs font-medium;
+    @apply bg-blue-100 text-blue-800;
+    @apply dark:bg-blue-900 dark:text-blue-200;
+  }
+  
+  .addressContainer {
+    @apply flex items-center justify-between;
+    @apply px-3 py-2 rounded-md;
+    @apply bg-gray-50 dark:bg-gray-900;
+    @apply border border-gray-200 dark:border-gray-700;
+  }
+  
+  .address {
+    @apply font-mono text-sm;
+    @apply text-gray-800 dark:text-gray-200;
+  }
+  
+  .copyButton {
+    @apply p-1 hover:bg-gray-100 dark:hover:bg-gray-800;
+    @apply rounded-md transition-colors duration-200;
+  }
+  
+  .copyButton[data-copied="true"] {
+    @apply text-green-500;
+  }
+  
+  .helpText {
+    @apply mt-6 text-center text-sm text-gray-500 dark:text-gray-400;
+  }
+  
+  /* Mobile Optimization */
+  @media (max-width: 640px) {
+    .dialogContent {
+      @apply p-4;
+    }
+  
+    .qrContainer {
+      @apply scale-90;
+    }
+  }
+  
+  /* Animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .walletCard, .connectButton {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  /* Loading Animation */
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  
+  .connecting {
+    @apply animate-pulse;
+  }
+  
+  /* Platform-specific styles */
+  .ios .optionButton {
+    @apply rounded-xl;
+  }
+  
+  .android .optionButton {
+    @apply rounded-md;
+  }

@@ -1,0 +1,227 @@
+#pragma version =0.4.0;
+
+;; =============== Channel State ===============
+;; state#_ channel_id:uint64
+;;         alice:MsgAddress
+;;         bob:MsgAddress
+;;         alice_balance:Coins
+;;         bob_balance:Coins
+;;         seqno:uint32
+;;         status:uint8
+;;         timeout:uint32
+;;         last_update:uint64 = State;
+
+const int CHANNEL_INIT = 0;
+const int CHANNEL_OPEN = 1;
+const int CHANNEL_CLOSING = 2;
+const int CHANNEL_CLOSED = 3;
+
+;; =============== Operation Codes ===============
+const int op::init() = 0x1;
+const int op::cooperative_close() = 0x2;
+const int op::start_uncooperative_close() = 0x3;
+const int op::challenge_close() = 0x4;
+const int op::confirm_close() = 0x5;
+
+;; =============== Errors ===============
+const int error::invalid_signature() = 201;
+const int error::invalid_state() = 202;
+const int error::invalid_balance() = 203;
+const int error::timeout_not_expired() = 204;
+const int error::invalid_seqno() = 205;
+
+;; =============== Storage Operations ===============
+(int, slice, slice, int, int, int, int, int, int) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_uint(64),      ;; channel_id
+        ds~load_msg_addr(),    ;; alice
+        ds~load_msg_addr(),    ;; bob
+        ds~load_coins(),       ;; alice_balance
+        ds~load_coins(),       ;; bob_balance
+        ds~load_uint(32),      ;; seqno
+        ds~load_uint(8),       ;; status
+        ds~load_uint(32),      ;; timeout
+        ds~load_uint(64)       ;; last_update
+    );
+}
+
+() save_data(int channel_id, slice alice, slice bob, int alice_balance, 
+            int bob_balance, int seqno, int status, int timeout, 
+            int last_update) impure inline {
+    set_data(begin_cell()
+        .store_uint(channel_id, 64)
+        .store_slice(alice)
+        .store_slice(bob)
+        .store_coins(alice_balance)
+        .store_coins(bob_balance)
+        .store_uint(seqno, 32)
+        .store_uint(status, 8)
+        .store_uint(timeout, 32)
+        .store_uint(last_update, 64)
+    .end_cell());
+}
+
+;; =============== Channel Operations ===============
+() init_channel(slice sender_address, int msg_value, slice in_msg) impure {
+    ;; Initialize a new payment channel
+    int channel_id = in_msg~load_uint(64);
+    slice bob = in_msg~load_msg_addr();
+    int timeout = in_msg~load_uint(32);
+    
+    save_data(
+        channel_id,
+        sender_address,    ;; alice
+        bob,
+        msg_value,        ;; initial alice balance
+        0,                ;; initial bob balance
+        0,                ;; seqno
+        CHANNEL_INIT,     ;; status
+        timeout,
+        now()             ;; last_update
+    );
+}
+
+() cooperative_close(slice sender_address, slice in_msg) impure {
+    ;; Load channel data
+    (int channel_id, slice alice, slice bob, int alice_balance, int bob_balance,
+     int seqno, int status, int timeout, int last_update) = load_data();
+    
+    ;; Verify channel is open
+    throw_unless(error::invalid_state(), status == CHANNEL_OPEN);
+    
+    ;; Load signatures and final state
+    slice alice_signature = in_msg~load_bits(512);
+    slice bob_signature = in_msg~load_bits(512);
+    int final_seqno = in_msg~load_uint(32);
+    int final_alice_balance = in_msg~load_coins();
+    int final_bob_balance = in_msg~load_coins();
+    
+    ;; Verify seqno
+    throw_unless(error::invalid_seqno(), final_seqno > seqno);
+    
+    ;; Verify balances
+    throw_unless(error::invalid_balance(), 
+        final_alice_balance + final_bob_balance == alice_balance + bob_balance);
+    
+    ;; Verify signatures
+    cell signed_data = begin_cell()
+        .store_uint(final_seqno, 32)
+        .store_coins(final_alice_balance)
+        .store_coins(final_bob_balance)
+    .end_cell();
+    
+    slice hash = signed_data.cell_hash().slice();
+    throw_unless(error::invalid_signature(), 
+        check_signature(hash, alice_signature, alice) & 
+        check_signature(hash, bob_signature, bob));
+    
+    ;; Send final balances
+    if (final_alice_balance > 0) {
+        send_grams(alice, final_alice_balance);
+    }
+    if (final_bob_balance > 0) {
+        send_grams(bob, final_bob_balance);
+    }
+    
+    ;; Update status
+    save_data(
+        channel_id, alice, bob,
+        0, 0, final_seqno,
+        CHANNEL_CLOSED,
+        timeout,
+        now()
+    );
+}
+
+() start_uncooperative_close(slice sender_address, slice in_msg) impure {
+    ;; Load channel data
+    (int channel_id, slice alice, slice bob, int alice_balance, int bob_balance,
+     int seqno, int status, int timeout, int last_update) = load_data();
+    
+    ;; Verify channel is open
+    throw_unless(error::invalid_state(), status == CHANNEL_OPEN);
+    
+    ;; Verify sender is participant
+    throw_unless(error::unauthorized(),
+        equal_slices(sender_address, alice) | equal_slices(sender_address, bob));
+    
+    ;; Update status to closing
+    save_data(
+        channel_id, alice, bob,
+        alice_balance, bob_balance, seqno,
+        CHANNEL_CLOSING,
+        timeout,
+        now()
+    );
+}
+
+() challenge_close(slice sender_address, slice in_msg) impure {
+    ;; Load channel data
+    (int channel_id, slice alice, slice bob, int alice_balance, int bob_balance,
+     int seqno, int status, int timeout, int last_update) = load_data();
+    
+    ;; Verify channel is closing
+    throw_unless(error::invalid_state(), status == CHANNEL_CLOSING);
+    
+    ;; Load new state
+    int new_seqno = in_msg~load_uint(32);
+    int new_alice_balance = in_msg~load_coins();
+    int new_bob_balance = in_msg~load_coins();
+    slice signature = in_msg~load_bits(512);
+    
+    ;; Verify seqno
+    throw_unless(error::invalid_seqno(), new_seqno > seqno);
+    
+    ;; Verify balances
+    throw_unless(error::invalid_balance(), 
+        new_alice_balance + new_bob_balance == alice_balance + bob_balance);
+    
+    ;; Verify signature
+    cell signed_data = begin_cell()
+        .store_uint(new_seqno, 32)
+        .store_coins(new_alice_balance)
+        .store_coins(new_bob_balance)
+    .end_cell();
+    
+    slice hash = signed_data.cell_hash().slice();
+    
+    ;; Check signature from non-challenger
+    if (equal_slices(sender_address, alice)) {
+        throw_unless(error::invalid_signature(), 
+            check_signature(hash, signature, bob));
+    } else {
+        throw_unless(error::invalid_signature(), 
+            check_signature(hash, signature, alice));
+    }
+    
+    ;; Update state
+    save_data(
+        channel_id, alice, bob,
+        new_alice_balance, new_bob_balance, new_seqno,
+        CHANNEL_CLOSING,
+        timeout,
+        now()
+    );
+}
+
+() confirm_close(slice sender_address) impure {
+    ;; Load channel data
+    (int channel_id, slice alice, slice bob, int alice_balance, int bob_balance,
+     int seqno, int status, int timeout, int last_update) = load_data();
+    
+    ;; Verify channel is closing
+    throw_unless(error::invalid_state(), status == CHANNEL_CLOSING);
+    
+    ;; Verify timeout has passed
+    throw_unless(error::timeout_not_expired(), 
+        now() >= last_update + timeout);
+    
+    ;; Send final balances
+    if (alice_balance > 0) {
+        send_grams(alice, alice_balance);
+    }
+        if (bob_balance > 0) {
+            send_grams(bob, bob_balance);
+        }
+    }

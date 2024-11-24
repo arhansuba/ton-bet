@@ -1,0 +1,336 @@
+#pragma version =0.4.0;
+#include "utils/stdlib.fc";
+#include "utils/constants.fc";
+#include "utils/params.fc";
+
+;; =============== Storage ===============
+;; storage#_ owner_address:MsgAddress
+;;            total_bets:uint32
+;;            total_volume:Coins
+;;            min_bet:Coins
+;;            platform_fee:uint8
+;;            bets:(HashmapE 32 Bet) = Storage;
+
+;; bet#_ id:uint32
+;;       creator:MsgAddress
+;;       amount:Coins
+;;       description:^Cell
+;;       participants:(HashmapE 8 MsgAddress)
+;;       status:uint8
+;;       winner:MsgAddress
+;;       created_at:uint64 = Bet;
+
+(slice, int, int, int, int, cell) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_msg_addr(),     ;; owner_address
+        ds~load_uint(32),       ;; total_bets
+        ds~load_coins(),        ;; total_volume
+        ds~load_coins(),        ;; min_bet
+        ds~load_uint(8),        ;; platform_fee
+        ds~load_dict()          ;; bets
+    );
+}
+
+() save_data(slice owner_address, int total_bets, int total_volume, int min_bet, 
+            int platform_fee, cell bets) impure inline {
+    set_data(begin_cell()
+        .store_slice(owner_address)
+        .store_uint(total_bets, 32)
+        .store_coins(total_volume)
+        .store_coins(min_bet)
+        .store_uint(platform_fee, 8)
+        .store_dict(bets)
+        .end_cell());
+}
+
+;; =============== Bet Management ===============
+() create_bet(slice sender_address, int msg_value, slice in_msg) impure {
+    ;; Load storage
+    (slice owner_address, int total_bets, int total_volume, 
+     int min_bet, int platform_fee, cell bets) = load_data();
+    
+    ;; Validate bet amount
+    throw_unless(error::insufficient_amount(), msg_value >= min_bet);
+    
+    ;; Calculate platform fee
+    int fee_amount = muldiv(msg_value, platform_fee, 100);
+    int bet_amount = msg_value - fee_amount;
+    
+    ;; Send platform fee to owner
+    send_grams(owner_address, fee_amount, op::platform_fee());
+    
+    ;; Store description in a ref cell
+    cell description = in_msg~load_ref();
+    
+    ;; Create participants dict with creator as first participant
+    cell participants = new_dict();
+    participants~udict_set_builder(
+        8, 0, begin_cell().store_slice(sender_address)
+    );
+    
+    ;; Create bet data
+    cell bet_data = begin_cell()
+        .store_uint(total_bets, 32)       ;; id
+        .store_slice(sender_address)       ;; creator
+        .store_coins(bet_amount)           ;; amount
+        .store_ref(description)            ;; description
+        .store_dict(participants)          ;; participants
+        .store_uint(status::active(), 8)   ;; status
+        .store_slice(sender_address)       ;; winner (initially creator)
+        .store_uint(now(), 64)             ;; created_at
+        .end_cell();
+        
+    ;; Add bet to storage
+    bets~udict_set_builder(32, total_bets, begin_cell().store_ref(bet_data));
+    
+    ;; Update totals
+    total_bets += 1;
+    total_volume += msg_value;
+    
+    save_data(owner_address, total_bets, total_volume, min_bet, platform_fee, bets);
+    
+    ;; Emit event
+    emit_log_simple(op::bet_created(), total_bets - 1, sender_address);
+}
+
+() join_bet(slice sender_address, int msg_value, slice in_msg) impure {
+    ;; Load storage
+    (slice owner_address, int total_bets, int total_volume, 
+     int min_bet, int platform_fee, cell bets) = load_data();
+    
+    ;; Get bet data
+    int bet_id = in_msg~load_uint(32);
+    (slice bet_data, int success) = bets.udict_get_ref?(32, bet_id);
+    throw_unless(error::bet_not_found(), success);
+    
+    bet_data = bet_data.begin_parse();
+    
+    ;; Parse bet data
+    bet_data~skip_bits(32);               ;; skip id
+    slice creator = bet_data~load_msg_addr();
+    int amount = bet_data~load_coins();
+    cell description = bet_data~load_ref();
+    cell participants = bet_data~load_dict();
+    int status = bet_data~load_uint(8);
+    slice winner = bet_data~load_msg_addr();
+    int created_at = bet_data~load_uint(64);
+    
+    ;; Validate bet
+    throw_unless(error::bet_closed(), status == status::active());
+    throw_unless(error::amount_mismatch(), msg_value >= amount);
+    
+    ;; Calculate and send platform fee
+    int fee_amount = muldiv(msg_value, platform_fee, 100);
+    int bet_amount = msg_value - fee_amount;
+    
+    send_grams(owner_address, fee_amount, op::platform_fee());
+    
+    ;; Add participant
+    int participant_id = dict_get_next_key(8, participants);
+    participants~udict_set_builder(
+        8, participant_id, 
+        begin_cell().store_slice(sender_address)
+    );
+    
+    ;; Update bet data
+    cell new_bet_data = begin_cell()
+        .store_uint(bet_id, 32)
+        .store_slice(creator)
+        .store_coins(amount)
+        .store_ref(description)
+        .store_dict(participants)
+        .store_uint(status, 8)
+        .store_slice(winner)
+        .store_uint(created_at, 64)
+        .end_cell();
+    
+    ;; Update storage
+    bets~udict_set_builder(32, bet_id, begin_cell().store_ref(new_bet_data));
+    total_volume += msg_value;
+    
+    save_data(owner_address, total_bets, total_volume, min_bet, platform_fee, bets);
+    
+    ;; Emit event
+    emit_log_simple(op::bet_joined(), bet_id, sender_address);
+}
+
+() resolve_bet(slice sender_address, slice in_msg) impure {
+    ;; Load storage
+    (slice owner_address, int total_bets, int total_volume, 
+     int min_bet, int platform_fee, cell bets) = load_data();
+    
+    ;; Get bet data
+    int bet_id = in_msg~load_uint(32);
+    slice winner_address = in_msg~load_msg_addr();
+    
+    (slice bet_data, int success) = bets.udict_get_ref?(32, bet_id);
+    throw_unless(error::bet_not_found(), success);
+    
+    bet_data = bet_data.begin_parse();
+    
+    ;; Parse bet data
+    bet_data~skip_bits(32);               ;; skip id
+    slice creator = bet_data~load_msg_addr();
+    int amount = bet_data~load_coins();
+    cell description = bet_data~load_ref();
+    cell participants = bet_data~load_dict();
+    int status = bet_data~load_uint(8);
+    slice current_winner = bet_data~load_msg_addr();
+    int created_at = bet_data~load_uint(64);
+    
+    ;; Validate
+    throw_unless(error::unauthorized(), equal_slices(sender_address, creator));
+    throw_unless(error::bet_closed(), status == status::active());
+    
+    ;; Verify winner is a participant
+    int is_participant = false;
+    int key = -1;
+    do {
+        (key, slice participant, int success) = participants~udict_get_next?(8, key);
+        if (success) {
+            if (equal_slices(participant, winner_address)) {
+                is_participant = true;
+            }
+        }
+    } until (~ success);
+    
+    throw_unless(error::invalid_winner(), is_participant);
+    
+    ;; Send winnings
+    send_grams(winner_address, amount, op::bet_won());
+    
+    ;; Update bet status
+    cell new_bet_data = begin_cell()
+        .store_uint(bet_id, 32)
+        .store_slice(creator)
+        .store_coins(amount)
+        .store_ref(description)
+        .store_dict(participants)
+        .store_uint(status::completed(), 8)
+        .store_slice(winner_address)
+        .store_uint(created_at, 64)
+        .end_cell();
+    
+    bets~udict_set_builder(32, bet_id, begin_cell().store_ref(new_bet_data));
+    
+    save_data(owner_address, total_bets, total_volume, min_bet, platform_fee, bets);
+    
+    ;; Emit event
+    emit_log_simple(op::bet_resolved(), bet_id, winner_address);
+}
+
+;; =============== Admin Functions ===============
+() update_platform_fee(slice sender_address, slice in_msg) impure {
+    ;; Load storage
+    (slice owner_address, int total_bets, int total_volume, 
+     int min_bet, int platform_fee, cell bets) = load_data();
+    
+    ;; Verify sender is owner
+    throw_unless(error::unauthorized(), equal_slices(sender_address, owner_address));
+    
+    ;; Update fee
+    int new_fee = in_msg~load_uint(8);
+    throw_unless(error::invalid_fee(), new_fee <= 100);
+    
+    save_data(owner_address, total_bets, total_volume, min_bet, new_fee, bets);
+    
+    ;; Emit event
+    emit_log_simple(op::fee_updated(), new_fee, sender_address);
+}
+
+() update_min_bet(slice sender_address, slice in_msg) impure {
+    ;; Load storage
+    (slice owner_address, int total_bets, int total_volume, 
+     int min_bet, int platform_fee, cell bets) = load_data();
+    
+    ;; Verify sender is owner
+    throw_unless(error::unauthorized(), equal_slices(sender_address, owner_address));
+    
+    ;; Update minimum bet
+    int new_min_bet = in_msg~load_coins();
+    
+    save_data(owner_address, total_bets, total_volume, new_min_bet, platform_fee, bets);
+    
+    ;; Emit event
+    emit_log_simple(op::min_bet_updated(), new_min_bet, sender_address);
+}
+
+;; =============== Message Handler ===============
+() recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    ;; Ignore empty messages
+    if (in_msg_body.slice_empty?()) {
+        return ();
+    }
+    
+    ;; Parse sender address
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    slice sender_address = cs~load_msg_addr();
+    
+    ;; Handle message
+    int op = in_msg_body~load_uint(32);
+    
+    if (op == op::create_bet()) {
+        create_bet(sender_address, msg_value, in_msg_body);
+        return ();
+    }
+    
+    if (op == op::join_bet()) {
+        join_bet(sender_address, msg_value, in_msg_body);
+        return ();
+    }
+    
+    if (op == op::resolve_bet()) {
+        resolve_bet(sender_address, in_msg_body);
+        return ();
+    }
+    
+    if (op == op::update_fee()) {
+        update_platform_fee(sender_address, in_msg_body);
+        return ();
+    }
+    
+    if (op == op::update_min_bet()) {
+        update_min_bet(sender_address, in_msg_body);
+        return ();
+    }
+    
+    throw(error::invalid_op());
+}
+
+;; =============== Get Methods ===============
+(int, int, int, int) get_contract_data() method_id {
+    (slice owner_address, int total_bets, int total_volume, 
+     int min_bet, int platform_fee, _) = load_data();
+    return (total_bets, total_volume, min_bet, platform_fee);
+}
+
+(slice, int, slice) get_bet_info(int bet_id) method_id {
+    (_, _, _, _, _, cell bets) = load_data();
+    (slice bet_data, int success) = bets.udict_get_ref?(32, bet_id);
+    throw_unless(error::bet_not_found(), success);
+    
+    bet_data = bet_data.begin_parse();
+    bet_data~skip_bits(32);               ;; skip id
+    slice creator = bet_data~load_msg_addr();
+    int amount = bet_data~load_coins();
+    cell description = bet_data~load_ref();
+    
+    return (creator, amount, description.begin_parse());
+}
+
+cell get_participants(int bet_id) method_id {
+    (_, _, _, _, _, cell bets) = load_data();
+    (slice bet_data, int success) = bets.udict_get_ref?(32, bet_id);
+    throw_unless(error::bet_not_found(), success);
+    
+    bet_data = bet_data.begin_parse();
+    bet_data~skip_bits(32);               ;; skip id
+    bet_data~load_msg_addr();             ;; skip creator
+    bet_data~load_coins();                ;; skip amount
+    bet_data~load_ref();                  ;; skip description
+    cell participants = bet_data~load_dict();
+    
+    return participants;
+}

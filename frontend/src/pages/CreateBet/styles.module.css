@@ -1,0 +1,64 @@
+/* styles.module.css */
+.container {
+    @apply flex flex-col min-h-screen w-full px-4 pb-20;
+  }
+  
+  .header {
+    @apply sticky top-0 z-10 bg-background/95 backdrop-blur py-4;
+  }
+  
+  .form {
+    @apply space-y-6 mt-4;
+  }
+  
+  .formCard {
+    @apply p-4 rounded-lg border bg-card;
+  }
+  
+  .inputGroup {
+    @apply space-y-2;
+  }
+  
+  .label {
+    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
+  }
+  
+  .helperText {
+    @apply text-sm text-muted-foreground mt-1;
+  }
+  
+  .amountInput {
+    @apply relative flex items-center;
+  }
+  
+  .amountSuffix {
+    @apply absolute right-3 text-sm text-muted-foreground;
+  }
+  
+  .presetAmounts {
+    @apply grid grid-cols-3 gap-2 mt-2;
+  }
+  
+  .infoCard {
+    @apply p-4 rounded-lg bg-muted/50 space-y-2 mt-6;
+  }
+  
+  .infoRow {
+    @apply flex justify-between items-center text-sm;
+  }
+  
+  .infoLabel {
+    @apply text-muted-foreground;
+  }
+  
+  .infoValue {
+    @apply font-medium;
+  }
+  
+  .separator {
+    @apply h-[1px] w-full bg-border my-2;
+  }
+  
+  .errorText {
+    @apply text-sm text-destructive mt-1;
+  }

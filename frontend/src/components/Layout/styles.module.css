@@ -1,0 +1,160 @@
+/* styles.module.css */
+.layout {
+    @apply flex flex-col min-h-screen;
+    @apply bg-[var(--tg-theme-bg-color)];
+    @apply text-[var(--tg-theme-text-color)];
+  }
+  
+  .header {
+    @apply fixed top-0 left-0 right-0 z-50;
+    @apply bg-[var(--tg-theme-bg-color)];
+    @apply border-b border-gray-200 dark:border-gray-800;
+    @apply backdrop-blur-lg bg-opacity-90;
+  }
+  
+  .headerContent {
+    @apply flex items-center justify-between;
+    @apply px-4 h-14;
+    @apply max-w-screen-xl mx-auto;
+  }
+  
+  .title {
+    @apply text-lg font-semibold;
+    @apply text-[var(--tg-theme-text-color)];
+  }
+  
+  .walletContainer {
+    @apply flex items-center space-x-2;
+  }
+  
+  .main {
+    @apply flex-grow;
+    @apply pt-14 pb-16; /* Account for header and footer */
+    @apply px-4;
+    @apply max-w-screen-xl mx-auto w-full;
+  }
+  
+  .footer {
+    @apply fixed bottom-0 left-0 right-0 z-50;
+    @apply bg-[var(--tg-theme-bg-color)];
+    @apply border-t border-gray-200 dark:border-gray-800;
+    @apply backdrop-blur-lg bg-opacity-90;
+  }
+  
+  .nav {
+    @apply flex items-center justify-around;
+    @apply h-16 px-4;
+    @apply max-w-screen-xl mx-auto;
+  }
+  
+  .navItem {
+    @apply flex flex-col items-center;
+    @apply px-3 py-1;
+    @apply text-[var(--tg-theme-hint-color)];
+    @apply transition-colors duration-200;
+  }
+  
+  .navItemActive {
+    @apply text-[var(--tg-theme-link-color)];
+  }
+  
+  .navIcon {
+    @apply h-5 w-5 mb-1;
+  }
+  
+  .navLabel {
+    @apply text-xs font-medium;
+  }
+  
+  .backButton {
+    @apply -ml-2 text-[var(--tg-theme-text-color)];
+  }
+  
+  /* Section Components */
+  .headerSection {
+    @apply mb-6;
+  }
+  
+  .contentSection {
+    @apply space-y-6;
+  }
+  
+  .actionsSection {
+    @apply mt-6 space-y-4;
+  }
+  
+  /* Animations */
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .layout > * {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  /* Platform-specific styles */
+  :global(.platform-ios) .navItem {
+    @apply pb-6; /* Account for iOS home indicator */
+  }
+  
+  /* Safe areas */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    .footer {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+  
+  /* Responsive adjustments */
+  @media (min-width: 640px) {
+    .main {
+      @apply px-6;
+    }
+  
+    .nav {
+      @apply px-6;
+    }
+  
+    .navLabel {
+      @apply text-sm;
+    }
+  }
+  
+  /* Dark mode enhancements */
+  .dark .header,
+  .dark .footer {
+    @apply bg-opacity-95;
+  }
+  
+  /* Loading states */
+  .loading {
+    @apply animate-pulse;
+  }
+  
+  /* Accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    .layout > * {
+      animation: none;
+    }
+  }
+  
+  /* Custom scrollbar */
+  .main::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+  
+  .main::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  .main::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-700;
+    @apply rounded-full;
+    @apply hover:bg-gray-400 dark:hover:bg-gray-600;
+  }

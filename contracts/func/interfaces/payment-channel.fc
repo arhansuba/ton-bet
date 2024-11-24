@@ -1,0 +1,140 @@
+#pragma version =0.4.0;
+
+;; =============== Channel State TL-B ===============
+{-
+state#_ channel_id:uint64
+       alice:MsgAddress
+       bob:MsgAddress
+       alice_balance:Coins
+       bob_balance:Coins
+       seqno:uint32
+       status:uint8
+       timeout:uint32
+       last_update:uint64 = State;
+
+signature#_ r:uint256 s:uint256 v:uint8 = Signature;
+
+channel_state#_ seqno:uint32
+               alice_balance:Coins
+               bob_balance:Coins = ChannelState;
+-}
+
+;; =============== Message Ops ===============
+{-
+init#1 query_id:uint64 
+      channel_id:uint64
+      counterparty:MsgAddress
+      timeout:uint32 = InternalMsgBody;
+
+cooperative_close#2 query_id:uint64
+                   alice_signature:bits512
+                   bob_signature:bits512
+                   final_state:ChannelState = InternalMsgBody;
+
+start_uncooperative_close#3 query_id:uint64 = InternalMsgBody;
+
+challenge_close#4 query_id:uint64
+                 state:ChannelState
+                 signature:bits512 = InternalMsgBody;
+
+confirm_close#5 query_id:uint64 = InternalMsgBody;
+-}
+
+;; =============== Required Methods ===============
+{-
+  Required methods to implement:
+  
+  () recv_internal(int msg_value, cell in_msg_full, slice in_msg_body)
+  Handle incoming internal messages
+
+  (int, int, int, int) get_channel_state()
+  Returns (alice_balance, bob_balance, seqno, status)
+
+  (slice, slice) get_participants()
+  Returns (alice_address, bob_address)
+
+  int get_timeout()
+  Returns channel timeout period
+-}
+
+;; =============== Interface Constants ===============
+const int CHANNEL_INIT = 0;
+const int CHANNEL_OPEN = 1;
+const int CHANNEL_CLOSING = 2;
+const int CHANNEL_CLOSED = 3;
+
+const int MIN_TIMEOUT = 300;     ;; 5 minutes minimum timeout
+const int MAX_TIMEOUT = 604800;  ;; 1 week maximum timeout
+
+;; =============== Error Codes ===============
+{-
+error::invalid_signature#c9     = Error;  ;; 201
+error::invalid_state#ca        = Error;  ;; 202
+error::invalid_balance#cb      = Error;  ;; 203
+error::timeout_not_expired#cc  = Error;  ;; 204
+error::invalid_seqno#cd        = Error;  ;; 205
+-}
+
+;; =============== Interface Functions ===============
+{-
+  Functions to be implemented by contract:
+
+  init_channel:
+  - Creates new payment channel
+  - Sets initial balances
+  - Requires initial deposit
+
+  cooperative_close:
+  - Requires valid signatures from both parties
+  - Distributes final balances
+  - Closes channel
+
+  start_uncooperative_close:
+  - Initiates unilateral closing
+  - Starts challenge period
+  - Can be called by either party
+
+  challenge_close:
+  - Allows counterparty to challenge with newer state
+  - Requires valid signature
+  - Updates channel state
+
+  confirm_close:
+  - Finalizes uncooperative close
+  - Requires timeout period passed
+  - Distributes final balances
+-}
+
+;; =============== Signature Verification ===============
+{-
+  Signature verification scheme:
+  1. Pack channel state into cell:
+     * seqno (32 bits)
+     * alice_balance (Coins)
+     * bob_balance (Coins)
+  2. Calculate cell hash
+  3. Verify signature(s) of hash
+-}
+
+;; =============== Events ===============
+{-
+channel_created#1 channel_id:uint64 
+                 alice:MsgAddress
+                 bob:MsgAddress = ChannelCreated;
+
+channel_updated#2 channel_id:uint64
+                 seqno:uint32
+                 alice_balance:Coins
+                 bob_balance:Coins = ChannelUpdated;
+
+channel_closed#3 channel_id:uint64
+                final_alice_balance:Coins
+                final_bob_balance:Coins = ChannelClosed;
+
+closing_started#4 channel_id:uint64
+                 initiator:MsgAddress = ClosingStarted;
+
+close_challenged#5 channel_id:uint64
+                  challenger:MsgAddress
+                  new_seqno:uint32 = CloseChallenged;
+-}

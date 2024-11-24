@@ -1,0 +1,162 @@
+#pragma version =0.4.0;
+
+;; =============== Error Codes ===============
+const int error::unauthorized() = 100;
+const int error::insufficient_amount() = 101;
+const int error::bet_not_found() = 102;
+const int error::bet_closed() = 103;
+const int error::amount_mismatch() = 104;
+const int error::invalid_winner() = 105;
+const int error::invalid_fee() = 106;
+const int error::invalid_op() = 107;
+const int error::platform_busy() = 108;
+
+;; =============== Operation Codes ===============
+const int op::create_bet() = 0x947c403e;
+const int op::join_bet() = 0x1d8129e2;
+const int op::resolve_bet() = 0xb4028984;
+const int op::platform_fee() = 0x8e3d1b27;
+const int op::bet_won() = 0x9c2c1f6a;
+const int error::update_fee() = 0x6f47d15c;
+const int error::update_min_bet() = 0x4e93d612;
+
+;; =============== Status Codes ===============
+const int status::active() = 0;
+const int status::completed() = 1;
+const int status::cancelled() = 2;
+
+;; =============== Event Codes ===============
+const int event::bet_created() = 0x1;
+const int event::bet_joined() = 0x2;
+const int event::bet_resolved() = 0x3;
+const int event::fee_updated() = 0x4;
+const int event::min_bet_updated() = 0x5;
+
+;; =============== Message Helpers ===============
+() send_grams(slice address, int amount, int op) impure inline {
+    cell msg = begin_cell()
+        .store_uint(0x18, 6)                ;; nobounce
+        .store_slice(address)
+        .store_coins(amount)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .store_uint(op, 32)
+        .store_uint(cur_lt(), 64)
+    .end_cell();
+    
+    send_raw_message(msg, 1);              ;; pay transfer fees separately
+}
+
+() emit_log_simple(int op, int query_id, slice data) impure inline {
+    cell msg = begin_cell()
+        .store_uint(0x10, 6)               ;; nonbounce
+        .store_slice(my_address())
+        .store_coins(0)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .store_uint(op, 32)
+        .store_uint(query_id, 64)
+        .store_slice(data)
+    .end_cell();
+    
+    send_raw_message(msg, 0);
+}
+
+;; =============== Math Helpers ===============
+int calculate_fee(int amount, int fee_percent) inline {
+    return muldiv(amount, fee_percent, 100);
+}
+
+int min_of_two_ints(int a, int b) inline {
+    if (a > b) {
+        return b;
+    }
+    return a;
+}
+
+int max_of_two_ints(int a, int b) inline {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+;; =============== Storage Helpers ===============
+cell pack_bet_data(int id, slice creator, int amount, cell description, 
+                   cell participants, int status, slice winner, int created_at) inline {
+    return begin_cell()
+        .store_uint(id, 32)
+        .store_slice(creator)
+        .store_coins(amount)
+        .store_ref(description)
+        .store_dict(participants)
+        .store_uint(status, 8)
+        .store_slice(winner)
+        .store_uint(created_at, 64)
+    .end_cell();
+}
+
+(int, slice, int, cell, cell, int, slice, int) unpack_bet_data(cell bet_data) inline {
+    slice ds = bet_data.begin_parse();
+    return (
+        ds~load_uint(32),      ;; id
+        ds~load_msg_addr(),    ;; creator
+        ds~load_coins(),       ;; amount
+        ds~load_ref(),         ;; description
+        ds~load_dict(),        ;; participants
+        ds~load_uint(8),       ;; status
+        ds~load_msg_addr(),    ;; winner
+        ds~load_uint(64)       ;; created_at
+    );
+}
+
+;; =============== Validation Helpers ===============
+() validate_bet_status(int status, int expected_status) impure inline {
+    throw_unless(error::bet_closed(), status == expected_status);
+}
+
+() validate_amount(int amount, int expected) impure inline {
+    throw_unless(error::amount_mismatch(), amount >= expected);
+}
+
+() validate_fee(int fee) impure inline {
+    throw_unless(error::invalid_fee(), fee <= 100);
+}
+
+() validate_owner(slice sender, slice owner) impure inline {
+    throw_unless(error::unauthorized(), equal_slices(sender, owner));
+}
+
+;; =============== Participant Helpers ===============
+int is_participant(cell participants, slice address) inline {
+    int is_found = false;
+    int key = -1;
+    do {
+        (key, slice participant, int success) = participants~udict_get_next?(8, key);
+        if (success & equal_slices(participant, address)) {
+            is_found = true;
+        }
+    } until (~ success);
+    return is_found;
+}
+
+int count_participants(cell participants) inline {
+    int count = 0;
+    int key = -1;
+    do {
+        (key, _, int success) = participants~udict_get_next?(8, key);
+        if (success) {
+            count += 1;
+        }
+    } until (~ success);
+    return count;
+}
+
+;; =============== Gas Calculations ===============
+int calculate_storage_fee(int cells, int bits) inline {
+    return muldiv(cells * 500 + bits, 500000000, 1000);
+}
+
+int estimate_bet_fees(int participants) inline {
+    ;; Base storage fee + participant storage + message fees
+    return calculate_storage_fee(2 + participants, 1024) 
+         + participants * 10000000;  ;; 0.01 TON per participant for messages
+}

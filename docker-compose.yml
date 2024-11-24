@@ -1,0 +1,102 @@
+# docker-compose.yml
+
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: ton-betting-backend
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - MONGODB_URL=mongodb://mongodb:27017/ton_betting
+      - REDIS_HOST=redis
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - ton-betting-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: ton-betting-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ton-betting-network
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:5.0
+    container_name: ton-betting-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - ton-betting-network
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+
+  redis:
+    image: redis:7.0-alpine
+    container_name: ton-betting-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ton-betting-network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.42.0
+    container_name: ton-betting-prometheus
+    ports:
+      - "${PROMETHEUS_PORT}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - ton-betting-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:9.4.7
+    container_name: ton-betting-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - ton-betting-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  ton-betting-network:
+    driver: bridge

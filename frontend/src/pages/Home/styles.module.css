@@ -1,0 +1,60 @@
+/* styles.module.css */
+.container {
+    @apply flex flex-col min-h-screen w-full px-4 pb-20;
+  }
+  
+  .header {
+    @apply sticky top-0 z-10 bg-background/95 backdrop-blur;
+  }
+  
+  .statsGrid {
+    @apply grid grid-cols-2 gap-4 mt-4 mb-6;
+  }
+  
+  .statsCard {
+    @apply flex flex-col space-y-1 p-4 rounded-lg border bg-card text-card-foreground shadow-sm;
+  }
+  
+  .statsLabel {
+    @apply text-sm text-muted-foreground;
+  }
+  
+  .statsValue {
+    @apply text-2xl font-semibold;
+  }
+  
+  .tabs {
+    @apply mt-2 mb-4;
+  }
+  
+  .betList {
+    @apply space-y-4;
+  }
+  
+  .emptyState {
+    @apply flex flex-col items-center justify-center py-12 text-center space-y-4;
+  }
+  
+  .loadingState {
+    @apply flex items-center justify-center py-8;
+  }
+  
+  .createButton {
+    @apply fixed bottom-20 right-4 shadow-lg;
+  }
+  
+  .refreshButton {
+    @apply absolute right-4 top-4;
+  }
+  
+  .skeleton {
+    @apply animate-pulse bg-muted rounded;
+  }
+  
+  .skeletonText {
+    @apply h-4 w-3/4 skeleton;
+  }
+  
+  .skeletonCard {
+    @apply h-[140px] w-full skeleton;
+  }
