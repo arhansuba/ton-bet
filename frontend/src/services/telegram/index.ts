@@ -1,7 +1,6 @@
 // index.ts
 import { webAppService } from './webapp';
 import { Address } from '@ton/core';
-import { tonService } from '../ton';
 
 interface SendMessageParams {
   chatId: number;
@@ -137,7 +136,6 @@ class TelegramService {
   }
 
   public async notifyBetCancelled({
-    betId,
     creator,
     amount,
     description

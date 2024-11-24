@@ -3,7 +3,6 @@
 import { useCallback, useState } from 'react';
 import { useTonConnect } from './useTonConnect';
 import { Address, beginCell, toNano } from '@ton/core';
-import { WebApp } from '@twa-dev/sdk';
 import { useToast } from '@/components/ui/use-toast';
 import { config } from '@/config';
 
@@ -48,7 +47,7 @@ export function useBetContract() {
         .storeCoins(toNano(amount))
         .storeRef(
           beginCell()
-            .storeString(description)
+            .storeBuffer(Buffer.from(description, 'utf-8'))
             .storeUint(expiryTime, 64)
             .storeUint(maxParticipants, 8)
             .endCell()
@@ -57,7 +56,7 @@ export function useBetContract() {
 
       await sendTransaction({
         to: config.contracts.bet.address,
-        amount: toNano(amount),
+        amount: toNano(amount).toString(),
         message: betData.toString('base64')
       });
 
@@ -93,7 +92,7 @@ export function useBetContract() {
 
       await sendTransaction({
         to: config.contracts.bet.address,
-        amount: toNano(amount),
+        amount: toNano(amount).toString(),
         message: joinData.toString('base64')
       });
 
@@ -130,7 +129,7 @@ export function useBetContract() {
 
       await sendTransaction({
         to: config.contracts.bet.address,
-        amount: toNano('0.05'), // Gas fee
+        amount: toNano('0.05').toString(), // Gas fee
         message: resolveData.toString('base64')
       });
 

@@ -3,25 +3,31 @@ import BetContract from './contract';
 import PaymentChannel from './payment-channel';
 import { 
   TonClient, 
-  WalletContractV4,
-  SendMode 
-} from '@ton/ton';
-import { 
-  Address, 
+  WalletContractV4, 
+  SendMode} from '@ton/ton';
+import {
+  Address,
   beginCell,
-  toNano 
+  toNano
 } from '@ton/core';
 import { getHttpEndpoint } from '@orbs-network/ton-access';
-import { NETWORKS } from '../../constants';
+import { mnemonicToPrivateKey } from '@ton/crypto';
+
+interface TransactionStatus {
+  status: 'success' | 'failed' | 'not_found';
+  description?: string;
+}
+
+type NetworkType = 'MAINNET' | 'TESTNET';
 
 class TonService {
   private static instance: TonService;
-  private client: TonClient;
+  private client!: TonClient;
   private betContract: BetContract;
 
   private constructor() {
     this.betContract = new BetContract(
-      process.env.NEXT_PUBLIC_NETWORK as keyof typeof NETWORKS
+      (process.env.NEXT_PUBLIC_NETWORK || 'TESTNET') as NetworkType
     );
   }
 
@@ -53,13 +59,21 @@ class TonService {
     return new PaymentChannel(channelAddress, userWallet, platformWallet);
   }
 
-  async getTransactionStatus(hash: string) {
+  async getTransactionStatus(txHash: string): Promise<TransactionStatus> {
     try {
-      const tx = await this.client.getTransaction(hash);
+      const tx = await this.client.getTransaction(Address.parse(txHash), 'true', '');
+      
+      if (!tx) {
+        return { status: 'not_found' };
+      }
+
+      // Check transaction result from description
+      const description = tx.description?.toString();
+      const isSuccessful = !description?.includes('error');
+
       return {
-        status: tx.exitCode === 0 ? 'success' : 'failed',
-        exitCode: tx.exitCode,
-        description: tx.description
+        status: isSuccessful ? 'success' : 'failed',
+        description
       };
     } catch (error) {
       console.error('Error getting transaction status:', error);
@@ -80,18 +94,29 @@ class TonService {
           .endCell()
       : null;
 
-    const seqno = await wallet.getSeqno();
+    const provider = this.client.provider(wallet.address, { code: null, data: null }); // Get provider from client
+    const seqno = await wallet.getSeqno(provider);
     
     return wallet.sendTransfer({
-      seqno,
+      secretKey: await this.getSecretKey(),
       messages: [{
         amount: toNano(amount),
         payload: messageBody,
         to: to,
       }],
-      secretKey: wallet.keyPair.secretKey,
       sendMode: SendMode.PAY_GAS_SEPARATELY
+    }, {
+      seqno,
+      timeout: 60000 // Example timeout value
     });
+  }
+
+  private async getSecretKey() {
+    if (!process.env.NEXT_PUBLIC_MNEMONIC) {
+      throw new Error('Mnemonic not configured');
+    }
+    const keyPair = await mnemonicToPrivateKey(process.env.NEXT_PUBLIC_MNEMONIC.split(' '));
+    return keyPair.secretKey;
   }
 }
 

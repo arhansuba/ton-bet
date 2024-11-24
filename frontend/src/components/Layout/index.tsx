@@ -1,17 +1,15 @@
 
 import React from 'react';
-import { WebApp } from '@twa-dev/sdk';
-import { useWebApp } from '@/hooks/useWebApp';
+import WebApp from '@twa-dev/sdk';
+import { useWebApp } from '../../hooks/useWebApp';
 import { Toaster } from '@/components/ui/toaster';
-import { cn } from '@/utils/cn';
+import { cn } from '../../utils/cn';
 import { 
   Home, 
   Plus, 
   Trophy, 
   Settings, 
-  ArrowLeft,
-  Wallet 
-} from 'lucide-react';
+  ArrowLeft} from 'lucide-react';
 import { WalletConnect } from '@/components/WalletConnect';
 import { Button } from '@/components/ui/button';
 import styles from './styles.module.css';
@@ -41,8 +39,8 @@ export default function Layout({
 
   React.useEffect(() => {
     // Set WebApp theme colors
-    WebApp.setHeaderColor(themeParams.bg_color);
-    WebApp.setBackgroundColor(themeParams.bg_color);
+    WebApp.setHeaderColor(themeParams.bg_color as `#${string}`);
+    WebApp.setBackgroundColor(themeParams.bg_color as `#${string}`);
 
     // Update active tab based on current path
     const path = window.location.pathname;

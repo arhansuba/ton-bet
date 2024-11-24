@@ -1,6 +1,6 @@
 // index.ts
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { WebApp } from '@telegram-apps/sdk';
+import WebApp from '@telegram-apps/sdk';
 import { toast } from 'sonner';
 import { 
   ApiResponse, Bet, BetsResponse, CreateBetRequest, 

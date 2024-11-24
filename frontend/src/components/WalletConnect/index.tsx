@@ -1,14 +1,13 @@
 
 import React from 'react';
-import { useTonConnect } from '@/hooks/useTonConnect';
-import { WebApp } from '@twa-dev/sdk';
+import { useTonConnect } from '../../hooks/useTonConnect';
+import WebApp from '@twa-dev/sdk';
 import { QRCode } from '@/components/ui/qr-code';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { 
@@ -33,7 +32,7 @@ import {
 import styles from './styles.module.css';
 
 export default function WalletConnect() {
-  const { connected, connecting, address, network, connect, disconnect } = useTonConnect();
+  const { connected, connecting, address, network, disconnect } = useTonConnect();
   const [isQRVisible, setQRVisible] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const [showDialog, setShowDialog] = React.useState(false);

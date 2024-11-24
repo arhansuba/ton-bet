@@ -2,7 +2,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useTonConnect } from './useTonConnect';
 import { Address, beginCell, toNano } from '@ton/core';
-import { WebApp } from '@twa-dev/sdk';
 import { useToast } from '@/components/ui/use-toast';
 import { config } from '@/config';
 
@@ -22,6 +21,14 @@ interface CreateChannelParams {
     purpose: string;
     customData?: any;
   };
+}
+
+declare global {
+  interface Window {
+    tonkeeper: {
+      signRawPayload: (payload: Uint8Array) => Promise<string>;
+    };
+  }
 }
 
 export function usePaymentChannel() {
@@ -49,7 +56,7 @@ export function usePaymentChannel() {
         .storeCoins(toNano(initialBalance))
         .storeRef(
           beginCell()
-            .storeString(metadata?.purpose || '')
+            .storeBuffer(Buffer.from(metadata?.purpose || '', 'utf-8'))
             .storeDict(metadata?.customData || null)
             .endCell()
         )
@@ -57,7 +64,7 @@ export function usePaymentChannel() {
 
       await sendTransaction({
         to: config.contracts.paymentChannel.address,
-        amount: toNano(initialBalance),
+        amount: toNano(initialBalance).toString(),
         message: channelData.toString('base64')
       });
 
@@ -104,7 +111,7 @@ export function usePaymentChannel() {
       
       await sendTransaction({
         to: config.contracts.paymentChannel.address,
-        amount: toNano('0.05'), // Gas fee
+        amount: toNano('0.05').toString(), // Gas fee
         message: stateData.toString('base64')
       });
 
@@ -156,7 +163,7 @@ export function usePaymentChannel() {
 
       await sendTransaction({
         to: config.contracts.paymentChannel.address,
-        amount: toNano('0.1'), // Gas fee
+        amount: toNano('0.1').toString(), // Gas fee
         message: closeData.toString('base64')
       });
 

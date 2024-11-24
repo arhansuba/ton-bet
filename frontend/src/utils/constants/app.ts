@@ -1,5 +1,5 @@
 // app.ts
-import { WebAppModeType } from '@telegram-apps/sdk';
+import WebApp from '@telegram-apps/sdk';
 
 export const APP_CONFIG = {
   NAME: 'TON Betting Platform',
@@ -47,8 +47,8 @@ export const ROUTES = {
 
 export const TELEGRAM = {
   ALLOWED_ATTACH_MENU_MODES: [
-    WebAppModeType.FULLSCREEN,
-    WebAppModeType.EXPANDED,
+    WebApp.Mode.FULLSCREEN,
+    WebApp.Mode.EXPANDED,
   ],
   MIN_HEIGHT: 600,
 } as const;

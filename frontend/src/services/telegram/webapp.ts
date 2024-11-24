@@ -1,14 +1,75 @@
 // webapp.ts
-import { WebApp, MainButton, HapticFeedback } from '@telegram-apps/sdk';
-import { THEME } from '../../constants';
+import { MainButton, HapticFeedback } from '@telegram-apps/sdk';
+
+// Create constants.ts first in the constants folder
+export const THEME = {
+  COLORS: {
+    primary: '#0088CC',
+    background: {
+      dark: '#232323',
+      light: '#FFFFFF'
+    }
+  }
+} as const;
+
+declare global {
+  interface Window {
+    Telegram: {
+      WebApp: {
+        MainButton: MainButton;
+        HapticFeedback: HapticFeedback;
+        colorScheme: 'light' | 'dark';
+        setHeaderColor: (color: string) => void;
+        expand: () => void;
+        enableClosingConfirmation: () => void;
+        onEvent: (event: string, callback: () => void) => void;
+        BackButton: {
+          show: () => void;
+          hide: () => void;
+        };
+        showPopup: (params: {
+          title?: string;
+          message: string;
+          buttons?: Array<{ text: string; type?: string; }>;
+        }, callback: (buttonId: number) => void) => void;
+        showAlert: (message: string, callback: () => void) => void;
+        showConfirm: (message: string, callback: (confirmed: boolean) => void) => void;
+        showPopupButton: (params: {
+          buttons: Array<{ text: string; type: string; }>;
+        }, callback: (buttonId: number) => void) => void;
+        ready: () => void;
+        close: () => void;
+        initDataUnsafe: {
+          user?: {
+            id: number;
+            first_name: string;
+            last_name?: string;
+            username?: string;
+            language_code?: string;
+          };
+          query_id?: string;
+          start_param?: string;
+        };
+      };
+    };
+  }
+}
+
+interface WebAppUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  language_code?: string;
+}
 
 interface MainButtonConfig {
   text: string;
   onClick: () => void;
   isActive?: boolean;
   isLoading?: boolean;
-  color?: string;
-  textColor?: string;
+  color?: `#${string}`;
+  textColor?: `#${string}`;
 }
 
 class TelegramWebApp {
@@ -16,47 +77,43 @@ class TelegramWebApp {
   private mainButton: MainButton;
 
   constructor() {
-    this.haptic = WebApp.HapticFeedback;
-    this.mainButton = WebApp.MainButton;
+    this.haptic = window.Telegram.WebApp.HapticFeedback;
+    this.mainButton = window.Telegram.WebApp.MainButton;
     this.initializeWebApp();
   }
 
   private initializeWebApp() {
-    // Set theme variables based on Telegram theme
-    if (WebApp.colorScheme === 'dark') {
+    if (window.Telegram.WebApp.colorScheme === 'dark') {
       document.documentElement.setAttribute('data-theme', 'dark');
-      WebApp.setHeaderColor(THEME.COLORS.background.dark);
+      window.Telegram.WebApp.setHeaderColor(THEME.COLORS.background.dark);
     } else {
       document.documentElement.setAttribute('data-theme', 'light');
-      WebApp.setHeaderColor(THEME.COLORS.background.light);
+      window.Telegram.WebApp.setHeaderColor(THEME.COLORS.background.light);
     }
 
-    // Configure viewport settings
-    WebApp.expand();
-    WebApp.enableClosingConfirmation();
+    window.Telegram.WebApp.expand();
+    window.Telegram.WebApp.enableClosingConfirmation();
   }
 
   public configureMainButton({
     text,
     onClick,
-    isActive = true,
     isLoading = false,
     color = THEME.COLORS.primary,
     textColor = '#FFFFFF'
   }: MainButtonConfig) {
     this.mainButton.setText(text);
-    this.mainButton.onClick(onClick);
+    window.Telegram.WebApp.onEvent('mainButtonClicked', onClick);
+
     this.mainButton.setParams({
-      color,
-      text_color: textColor,
-      is_active: isActive,
-      is_visible: true,
+      bgColor: color,
+      textColor: textColor as `#${string}`,
+      isVisible: true
     });
 
     if (isLoading) {
-      this.mainButton.showProgress();
-    } else {
-      this.mainButton.hideProgress();
+      // Using setText as a workaround since showProgress is not available
+      this.mainButton.setText('Loading...');
     }
   }
 
@@ -69,11 +126,11 @@ class TelegramWebApp {
   }
 
   public showBackButton() {
-    WebApp.BackButton.show();
+    window.Telegram.WebApp.BackButton.show();
   }
 
   public hideBackButton() {
-    WebApp.BackButton.hide();
+    window.Telegram.WebApp.BackButton.hide();
   }
 
   public hapticImpact(type: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') {
@@ -96,13 +153,13 @@ class TelegramWebApp {
     title: string;
     message: string;
     buttons?: string[];
-  }) {
-    return new Promise<string>((resolve) => {
-      WebApp.showPopup({
+  }): Promise<string> {
+    return new Promise((resolve) => {
+      window.Telegram.WebApp.showPopup({
         title,
         message,
         buttons: buttons.map(text => ({ text })),
-      }, (buttonId) => {
+      }, (buttonId: number) => {
         resolve(buttons[buttonId]);
       });
     });
@@ -110,50 +167,44 @@ class TelegramWebApp {
 
   public showAlert(message: string): Promise<void> {
     return new Promise((resolve) => {
-      WebApp.showAlert(message, () => resolve());
+      window.Telegram.WebApp.showAlert(message, () => resolve());
     });
   }
 
   public showConfirm(message: string): Promise<boolean> {
     return new Promise((resolve) => {
-      WebApp.showConfirm(message, (confirmed) => resolve(confirmed));
+      window.Telegram.WebApp.showConfirm(message, (confirmed: boolean) => resolve(confirmed));
     });
   }
 
   public showActionSheet(options: string[]): Promise<string> {
     return new Promise((resolve) => {
-      WebApp.showPopupButton({
+      window.Telegram.WebApp.showPopupButton({
         buttons: options.map(text => ({ type: 'default', text })),
-      }, (buttonId) => {
+      }, (buttonId: number) => {
         resolve(options[buttonId]);
       });
     });
   }
 
   public ready() {
-    WebApp.ready();
+    window.Telegram.WebApp.ready();
   }
 
   public close() {
-    WebApp.close();
+    window.Telegram.WebApp.close();
   }
 
-  public getUserData() {
-    return {
-      id: WebApp.initDataUnsafe.user?.id,
-      firstName: WebApp.initDataUnsafe.user?.first_name,
-      lastName: WebApp.initDataUnsafe.user?.last_name,
-      username: WebApp.initDataUnsafe.user?.username,
-      languageCode: WebApp.initDataUnsafe.user?.language_code,
-    };
+  public getUserData(): WebAppUser | undefined {
+    return window.Telegram.WebApp.initDataUnsafe.user;
   }
 
-  public getQueryId() {
-    return WebApp.initDataUnsafe.query_id;
+  public getQueryId(): string | undefined {
+    return window.Telegram.WebApp.initDataUnsafe.query_id;
   }
 
-  public getStartParam() {
-    return WebApp.initDataUnsafe.start_param;
+  public getStartParam(): string | undefined {
+    return window.Telegram.WebApp.initDataUnsafe.start_param;
   }
 }
 

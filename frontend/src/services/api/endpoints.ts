@@ -28,7 +28,7 @@ export const API_CONFIG_BY_ENDPOINT = {
     timeout: API_CONFIG.TIMEOUT,
     retries: API_CONFIG.RETRY_ATTEMPTS,
   },
-  [ENDPOINTS.VERIFY_TRANSACTION]: {
+  '/transactions/:hash/verify': {
     timeout: API_CONFIG.TIMEOUT * 2,
     retries: API_CONFIG.RETRY_ATTEMPTS * 2,
   },

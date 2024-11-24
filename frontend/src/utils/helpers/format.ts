@@ -1,6 +1,5 @@
 // format.ts
-import { fromNano, toNano } from '@ton/core';
-import { WebApp } from '@twa-dev/sdk';
+import { fromNano } from '@ton/core';
 
 export const formatTon = (amount: string | number, decimals = 2): string => {
   try {
@@ -14,7 +13,7 @@ export const formatTon = (amount: string | number, decimals = 2): string => {
 export const formatDate = (timestamp: number): string => {
   try {
     const date = new Date(timestamp);
-    return new Intl.DateTimeFormat(WebApp.platform === 'web' ? 'en-US' : undefined, {
+    return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

@@ -1,7 +1,5 @@
 #pragma version =0.4.0;
-#include "utils/stdlib.fc";
-#include "utils/constants.fc";
-#include "utils/params.fc";
+
 
 ;; =============== Storage ===============
 ;; storage#_ owner_address:MsgAddress

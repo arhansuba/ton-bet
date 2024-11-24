@@ -28,7 +28,8 @@ const connector = new TonConnect({
 });
 
 export function useTonConnect(): UseTonConnectResult {
-  const { wallet, connected } = useTonWallet();
+  const wallet = useTonWallet();
+  const connected = !!wallet;
   const [connecting, setConnecting] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
   const [network, setNetwork] = useState<'mainnet' | 'testnet'>(config.network);
@@ -102,7 +103,7 @@ export function useTonConnect(): UseTonConnectResult {
       // Request user confirmation through WebApp
       WebApp.showConfirm(
         `Send ${amount} TON to ${to}?${message ? `\nMessage: ${message}` : ''}`,
-        async (confirmed) => {
+        async (confirmed: any) => {
           if (confirmed) {
             await connector.sendTransaction(transaction);
             WebApp.showAlert('Transaction sent successfully');
@@ -142,7 +143,7 @@ export function useTonConnect(): UseTonConnectResult {
   // Update network
   useEffect(() => {
     if (!wallet?.account.chain) return;
-    setNetwork(wallet.account.chain === 1 ? 'mainnet' : 'testnet');
+    setNetwork(wallet.account.chain === 'mainnet' ? 'mainnet' : 'testnet');
   }, [wallet?.account.chain]);
 
   return {

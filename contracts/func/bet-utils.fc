@@ -1,36 +1,36 @@
 #pragma version =0.4.0;
 
 ;; =============== Error Codes ===============
-const int error::unauthorized() = 100;
-const int error::insufficient_amount() = 101;
-const int error::bet_not_found() = 102;
-const int error::bet_closed() = 103;
-const int error::amount_mismatch() = 104;
-const int error::invalid_winner() = 105;
-const int error::invalid_fee() = 106;
-const int error::invalid_op() = 107;
-const int error::platform_busy() = 108;
+const int ERROR_UNAUTHORIZED = 100;
+const int ERROR_INSUFFICIENT_AMOUNT = 101;
+const int ERROR_BET_NOT_FOUND = 102;
+const int ERROR_BET_CLOSED = 103;
+const int ERROR_AMOUNT_MISMATCH = 104;
+const int ERROR_INVALID_WINNER = 105;
+const int ERROR_INVALID_FEE = 106;
+const int ERROR_INVALID_OP = 107;
+const int ERROR_PLATFORM_BUSY = 108;
 
 ;; =============== Operation Codes ===============
-const int op::create_bet() = 0x947c403e;
-const int op::join_bet() = 0x1d8129e2;
-const int op::resolve_bet() = 0xb4028984;
-const int op::platform_fee() = 0x8e3d1b27;
-const int op::bet_won() = 0x9c2c1f6a;
-const int error::update_fee() = 0x6f47d15c;
-const int error::update_min_bet() = 0x4e93d612;
+const int OP_CREATE_BET = 0x947c403e;
+const int OP_JOIN_BET = 0x1d8129e2;
+const int OP_RESOLVE_BET = 0xb4028984;
+const int OP_PLATFORM_FEE = 0x8e3d1b27;
+const int OP_BET_WON = 0x9c2c1f6a;
+const int OP_UPDATE_FEE = 0x6f47d15c;
+const int OP_UPDATE_MIN_BET = 0x4e93d612;
 
 ;; =============== Status Codes ===============
-const int status::active() = 0;
-const int status::completed() = 1;
-const int status::cancelled() = 2;
+const int STATUS_ACTIVE = 0;
+const int STATUS_COMPLETED = 1;
+const int STATUS_CANCELLED = 2;
 
 ;; =============== Event Codes ===============
-const int event::bet_created() = 0x1;
-const int event::bet_joined() = 0x2;
-const int event::bet_resolved() = 0x3;
-const int event::fee_updated() = 0x4;
-const int event::min_bet_updated() = 0x5;
+const int EVENT_BET_CREATED = 0x1;
+const int EVENT_BET_JOINED = 0x2;
+const int EVENT_BET_RESOLVED = 0x3;
+const int EVENT_FEE_UPDATED = 0x4;
+const int EVENT_MIN_BET_UPDATED = 0x5;
 
 ;; =============== Message Helpers ===============
 () send_grams(slice address, int amount, int op) impure inline {
@@ -110,19 +110,19 @@ cell pack_bet_data(int id, slice creator, int amount, cell description,
 
 ;; =============== Validation Helpers ===============
 () validate_bet_status(int status, int expected_status) impure inline {
-    throw_unless(error::bet_closed(), status == expected_status);
+    throw_unless(ERROR_BET_CLOSED, status == expected_status);
 }
 
 () validate_amount(int amount, int expected) impure inline {
-    throw_unless(error::amount_mismatch(), amount >= expected);
+    throw_unless(ERROR_AMOUNT_MISMATCH, amount >= expected);
 }
 
 () validate_fee(int fee) impure inline {
-    throw_unless(error::invalid_fee(), fee <= 100);
+    throw_unless(ERROR_INVALID_FEE, fee <= 100);
 }
 
 () validate_owner(slice sender, slice owner) impure inline {
-    throw_unless(error::unauthorized(), equal_slices(sender, owner));
+    throw_unless(ERROR_UNAUTHORIZED, equal_slices(sender, owner));
 }
 
 ;; =============== Participant Helpers ===============

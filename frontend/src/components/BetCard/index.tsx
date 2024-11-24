@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTonConnect } from '@/hooks/useTonConnect';
+import { useTonConnect } from '../../hooks/useTonConnect';
 import { fromNano } from '@ton/core';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Clock, 
   Users, 
-  Wallet, 
   Trophy,
   ArrowRight,
   AlertCircle 
@@ -29,7 +28,6 @@ interface BetCardProps {
 }
 
 export default function BetCard({
-  id,
   amount,
   description,
   participants,

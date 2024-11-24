@@ -1,8 +1,8 @@
 import React from 'react';
-import { useTonConnect } from '@/hooks/useTonConnect';
-import { useBetContract } from '@/hooks/useBetContract';
+import { useTonConnect } from '../../hooks/useTonConnect';
+import { useBetContract } from '../../hooks/useBetContract';
 import { toNano } from '@ton/core';
-import { WebApp } from '@twa-dev/sdk';
+import WebApp from '@twa-dev/sdk';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -55,7 +55,7 @@ const createBetSchema = z.object({
 type FormData = z.infer<typeof createBetSchema>;
 
 export default function CreateBetForm() {
-  const { connected, address } = useTonConnect();
+  const { connected } = useTonConnect();
   const { createBet, loading } = useBetContract();
   const [error, setError] = React.useState<string | null>(null);
 
@@ -65,7 +65,7 @@ export default function CreateBetForm() {
       amount: "1",
       description: "",
       expiryTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
-      maxParticipants: "2"
+      maxParticipants: 2
     }
   });
 
@@ -82,7 +82,7 @@ export default function CreateBetForm() {
         async (confirmed) => {
           if (confirmed) {
             await createBet({
-              amount: toNano(data.amount),
+              amount: toNano(data.amount).toString(),
               description: data.description,
               expiryTime: new Date(data.expiryTime).getTime(),
               maxParticipants: Number(data.maxParticipants)
@@ -119,7 +119,7 @@ export default function CreateBetForm() {
             <FormField
               control={form.control}
               name="amount"
-              render={({ field }) => (
+              render={({ field }: { field: any }) => (
                 <FormItem>
                   <FormLabel>Amount (TON)</FormLabel>
                   <FormControl>
@@ -144,7 +144,7 @@ export default function CreateBetForm() {
             <FormField
               control={form.control}
               name="description"
-              render={({ field }) => (
+              render={({ field }: { field: any }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
@@ -163,7 +163,7 @@ export default function CreateBetForm() {
             <FormField
               control={form.control}
               name="expiryTime"
-              render={({ field }) => (
+              render={({ field }: { field: any }) => (
                 <FormItem>
                   <FormLabel>Expiry Time</FormLabel>
                   <FormControl>
@@ -185,7 +185,7 @@ export default function CreateBetForm() {
             <FormField
               control={form.control}
               name="maxParticipants"
-              render={({ field }) => (
+              render={({ field }: { field: any }) => (
                 <FormItem>
                   <FormLabel>Max Participants</FormLabel>
                   <FormControl>

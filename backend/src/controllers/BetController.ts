@@ -13,7 +13,7 @@ export class BetController {
     private telegramService: TelegramService
   ) {}
 
-  async createBet = async (req: Request, res: Response) => {
+  createBet = async (req: Request, res: Response) => {
     try {
       const { amount, description, participants, expiryTime } = req.body;
       const initData = validateTelegramInitData(req.headers['x-telegram-init-data']);

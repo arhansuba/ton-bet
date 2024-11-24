@@ -17,18 +17,18 @@ const int CHANNEL_CLOSING = 2;
 const int CHANNEL_CLOSED = 3;
 
 ;; =============== Operation Codes ===============
-const int op::init() = 0x1;
-const int op::cooperative_close() = 0x2;
-const int op::start_uncooperative_close() = 0x3;
-const int op::challenge_close() = 0x4;
-const int op::confirm_close() = 0x5;
+const int OP_INIT = 0x1;
+const int OP_COOPERATIVE_CLOSE = 0x2;
+const int OP_START_UNCOOPERATIVE_CLOSE = 0x3;
+const int OP_CHALLENGE_CLOSE = 0x4;
+const int OP_CONFIRM_CLOSE = 0x5;
 
 ;; =============== Errors ===============
-const int error::invalid_signature() = 201;
-const int error::invalid_state() = 202;
-const int error::invalid_balance() = 203;
-const int error::timeout_not_expired() = 204;
-const int error::invalid_seqno() = 205;
+const int ERROR_INVALID_SIGNATURE = 201;
+const int ERROR_INVALID_STATE = 202;
+const int ERROR_INVALID_BALANCE = 203;
+const int ERROR_TIMEOUT_NOT_EXPIRED = 204;
+const int ERROR_INVALID_SEQNO = 205;
 
 ;; =============== Storage Operations ===============
 (int, slice, slice, int, int, int, int, int, int) load_data() inline {
@@ -64,7 +64,6 @@ const int error::invalid_seqno() = 205;
 
 ;; =============== Channel Operations ===============
 () init_channel(slice sender_address, int msg_value, slice in_msg) impure {
-    ;; Initialize a new payment channel
     int channel_id = in_msg~load_uint(64);
     slice bob = in_msg~load_msg_addr();
     int timeout = in_msg~load_uint(32);
@@ -83,12 +82,11 @@ const int error::invalid_seqno() = 205;
 }
 
 () cooperative_close(slice sender_address, slice in_msg) impure {
-    ;; Load channel data
     (int channel_id, slice alice, slice bob, int alice_balance, int bob_balance,
      int seqno, int status, int timeout, int last_update) = load_data();
     
     ;; Verify channel is open
-    throw_unless(error::invalid_state(), status == CHANNEL_OPEN);
+    throw_unless(ERROR_INVALID_STATE, status == CHANNEL_OPEN);
     
     ;; Load signatures and final state
     slice alice_signature = in_msg~load_bits(512);
@@ -98,10 +96,10 @@ const int error::invalid_seqno() = 205;
     int final_bob_balance = in_msg~load_coins();
     
     ;; Verify seqno
-    throw_unless(error::invalid_seqno(), final_seqno > seqno);
+    throw_unless(ERROR_INVALID_SEQNO, final_seqno > seqno);
     
     ;; Verify balances
-    throw_unless(error::invalid_balance(), 
+    throw_unless(ERROR_INVALID_BALANCE, 
         final_alice_balance + final_bob_balance == alice_balance + bob_balance);
     
     ;; Verify signatures
@@ -112,7 +110,7 @@ const int error::invalid_seqno() = 205;
     .end_cell();
     
     slice hash = signed_data.cell_hash().slice();
-    throw_unless(error::invalid_signature(), 
+    throw_unless(ERROR_INVALID_SIGNATURE, 
         check_signature(hash, alice_signature, alice) & 
         check_signature(hash, bob_signature, bob));
     
@@ -135,15 +133,14 @@ const int error::invalid_seqno() = 205;
 }
 
 () start_uncooperative_close(slice sender_address, slice in_msg) impure {
-    ;; Load channel data
     (int channel_id, slice alice, slice bob, int alice_balance, int bob_balance,
      int seqno, int status, int timeout, int last_update) = load_data();
     
     ;; Verify channel is open
-    throw_unless(error::invalid_state(), status == CHANNEL_OPEN);
+    throw_unless(ERROR_INVALID_STATE, status == CHANNEL_OPEN);
     
     ;; Verify sender is participant
-    throw_unless(error::unauthorized(),
+    throw_unless(ERROR_UNAUTHORIZED,
         equal_slices(sender_address, alice) | equal_slices(sender_address, bob));
     
     ;; Update status to closing
@@ -157,12 +154,11 @@ const int error::invalid_seqno() = 205;
 }
 
 () challenge_close(slice sender_address, slice in_msg) impure {
-    ;; Load channel data
     (int channel_id, slice alice, slice bob, int alice_balance, int bob_balance,
      int seqno, int status, int timeout, int last_update) = load_data();
     
     ;; Verify channel is closing
-    throw_unless(error::invalid_state(), status == CHANNEL_CLOSING);
+    throw_unless(ERROR_INVALID_STATE, status == CHANNEL_CLOSING);
     
     ;; Load new state
     int new_seqno = in_msg~load_uint(32);
@@ -171,10 +167,10 @@ const int error::invalid_seqno() = 205;
     slice signature = in_msg~load_bits(512);
     
     ;; Verify seqno
-    throw_unless(error::invalid_seqno(), new_seqno > seqno);
+    throw_unless(ERROR_INVALID_SEQNO, new_seqno > seqno);
     
     ;; Verify balances
-    throw_unless(error::invalid_balance(), 
+    throw_unless(ERROR_INVALID_BALANCE, 
         new_alice_balance + new_bob_balance == alice_balance + bob_balance);
     
     ;; Verify signature
@@ -188,10 +184,10 @@ const int error::invalid_seqno() = 205;
     
     ;; Check signature from non-challenger
     if (equal_slices(sender_address, alice)) {
-        throw_unless(error::invalid_signature(), 
+        throw_unless(ERROR_INVALID_SIGNATURE, 
             check_signature(hash, signature, bob));
     } else {
-        throw_unless(error::invalid_signature(), 
+        throw_unless(ERROR_INVALID_SIGNATURE, 
             check_signature(hash, signature, alice));
     }
     
@@ -206,22 +202,30 @@ const int error::invalid_seqno() = 205;
 }
 
 () confirm_close(slice sender_address) impure {
-    ;; Load channel data
     (int channel_id, slice alice, slice bob, int alice_balance, int bob_balance,
      int seqno, int status, int timeout, int last_update) = load_data();
     
     ;; Verify channel is closing
-    throw_unless(error::invalid_state(), status == CHANNEL_CLOSING);
+    throw_unless(ERROR_INVALID_STATE, status == CHANNEL_CLOSING);
     
     ;; Verify timeout has passed
-    throw_unless(error::timeout_not_expired(), 
+    throw_unless(ERROR_TIMEOUT_NOT_EXPIRED, 
         now() >= last_update + timeout);
     
     ;; Send final balances
     if (alice_balance > 0) {
         send_grams(alice, alice_balance);
     }
-        if (bob_balance > 0) {
-            send_grams(bob, bob_balance);
-        }
+    if (bob_balance > 0) {
+        send_grams(bob, bob_balance);
     }
+    
+    ;; Update final status
+    save_data(
+        channel_id, alice, bob,
+        0, 0, seqno,
+        CHANNEL_CLOSED,
+        timeout,
+        now()
+    );
+}

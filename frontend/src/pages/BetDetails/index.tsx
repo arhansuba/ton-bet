@@ -17,14 +17,12 @@ import {
   ExternalLink,
   Trophy,
   Users,
-  Timer,
   AlertCircle
 } from 'lucide-react';
 import { useTonConnect } from '@/hooks/useTonConnect';
 import { telegramService } from '@/services/telegram';
 import { webAppService } from '@/services/telegram/webapp';
 import { apiService } from '@/services/api';
-import { tonService } from '@/services/ton';
 import { BET_STATUS, QUERY_KEYS } from '@/constants';
 import styles from './styles.module.css';
 
